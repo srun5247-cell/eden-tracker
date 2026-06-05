@@ -1,0 +1,1428 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EDEN EKKAMAI - CM INP Document Tracker</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Prompt & Sarabun -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Chart.js for Status Pie/Doughnut Chart -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <style>
+        body {
+            font-family: 'Prompt', 'Sarabun', sans-serif;
+            background-color: #f1f5f9;
+        }
+        /* Custom Scrollbar for clean look */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        /* Digital Stamp Styles */
+        .stamp-approved {
+            border: 4px double #22c55e;
+            color: #22c55e;
+            transform: rotate(-8deg);
+        }
+        .stamp-retest {
+            border: 4px double #ef4444;
+            color: #ef4444;
+            transform: rotate(-8deg);
+        }
+        .stamp-pending {
+            border: 4px double #eab308;
+            color: #eab308;
+            transform: rotate(-8deg);
+        }
+        .stamp-subsign {
+            border: 4px double #3b82f6;
+            color: #3b82f6;
+            transform: rotate(-8deg);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col text-slate-800">
+
+    <!-- TOP NAVIGATION BAR -->
+    <header class="bg-slate-900 text-white shadow-md px-6 py-4 flex flex-wrap items-center justify-between gap-4">
+        <div class="flex items-center gap-3">
+            <div class="bg-amber-500 text-slate-950 font-bold px-3 py-1.5 rounded text-lg tracking-wider">
+                AES
+            </div>
+            <div>
+                <h1 class="text-xl font-bold tracking-tight">โครงการ EDEN EKKAMAI</h1>
+                <p class="text-xs text-slate-400">ระบบติดตามและตรวจสอบสถานะเอกสาร INP (Request for Inspection)</p>
+            </div>
+        </div>
+        <div class="flex items-center gap-4">
+            <div class="hidden md:flex items-center gap-2 text-sm text-slate-300 bg-slate-800 px-3 py-1.5 rounded-full">
+                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span>เชื่อมต่อฐานข้อมูลชีตจำลองแล้ว</span>
+            </div>
+            <div class="text-slate-400 text-xs sm:text-sm text-right">
+                <div>เวลาปัจจุบันโครงการ</div>
+                <div class="text-white font-mono font-bold" id="live-clock">--:--:--</div>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN CONTENT CONTAINER -->
+    <main class="flex-grow p-4 md:p-6 lg:p-8 max-w-[1700px] w-full mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- LEFT: DASHBOARD, SEARCH, AND TABLE LIST (7 COLS) -->
+        <section class="lg:col-span-7 flex flex-col gap-6">
+            
+            <!-- OVERVIEW STATS & STATUS CHART -->
+            <div class="grid grid-cols-1 xl:grid-cols-12 gap-4">
+                <!-- 5 KPI CARDS -->
+                <div class="xl:col-span-8 grid grid-cols-2 sm:grid-cols-5 xl:grid-cols-2 2xl:grid-cols-5 gap-3">
+                    <div onclick="setFilterStatus('all')" class="bg-white p-3 rounded-xl shadow-sm border border-slate-200 cursor-pointer hover:border-slate-400 transition flex flex-col justify-between">
+                        <span class="text-[11px] text-slate-500 font-medium uppercase">เอกสารทั้งหมด</span>
+                        <div class="flex items-baseline justify-between mt-2">
+                            <span class="text-2xl font-bold text-slate-800" id="stat-total">0</span>
+                            <i class="fa-solid fa-folder-open text-slate-400 text-lg"></i>
+                        </div>
+                    </div>
+                    <div onclick="setFilterStatus('รอการตรวจสอบ')" class="bg-white p-3 rounded-xl shadow-sm border-l-4 border-l-amber-500 border border-slate-200 cursor-pointer hover:border-amber-400 transition flex flex-col justify-between">
+                        <span class="text-[11px] text-amber-600 font-semibold uppercase">รอ CM ตรวจ</span>
+                        <div class="flex items-baseline justify-between mt-2">
+                            <span class="text-2xl font-bold text-amber-600" id="stat-pending">0</span>
+                            <i class="fa-solid fa-clock-rotate-left text-amber-400 text-lg"></i>
+                        </div>
+                    </div>
+                    <div onclick="setFilterStatus('รอ ผรม เซ็น')" class="bg-white p-3 rounded-xl shadow-sm border-l-4 border-l-blue-500 border border-slate-200 cursor-pointer hover:border-blue-400 transition flex flex-col justify-between">
+                        <span class="text-[11px] text-blue-600 font-semibold uppercase">รอ ผรม เซ็น</span>
+                        <div class="flex items-baseline justify-between mt-2">
+                            <span class="text-2xl font-bold text-blue-600" id="stat-subsign">0</span>
+                            <i class="fa-solid fa-file-signature text-blue-400 text-lg"></i>
+                        </div>
+                    </div>
+                    <div onclick="setFilterStatus('ต้องทดสอบซ้ำ')" class="bg-white p-3 rounded-xl shadow-sm border-l-4 border-l-rose-500 border border-slate-200 cursor-pointer hover:border-rose-400 transition flex flex-col justify-between">
+                        <span class="text-[11px] text-rose-600 font-semibold uppercase">ต้องทดสอบซ้ำ</span>
+                        <div class="flex items-baseline justify-between mt-2">
+                            <span class="text-2xl font-bold text-rose-600" id="stat-retest">0</span>
+                            <i class="fa-solid fa-triangle-exclamation text-rose-400 text-lg"></i>
+                        </div>
+                    </div>
+                    <div onclick="setFilterStatus('อนุมัติ')" class="bg-white p-3 rounded-xl shadow-sm border-l-4 border-l-emerald-500 border border-slate-200 cursor-pointer hover:border-emerald-400 transition flex flex-col justify-between">
+                        <span class="text-[11px] text-emerald-600 font-semibold uppercase">ผ่านอนุมัติ</span>
+                        <div class="flex items-baseline justify-between mt-2">
+                            <span class="text-2xl font-bold text-emerald-600" id="stat-approved">0</span>
+                            <i class="fa-solid fa-circle-check text-emerald-400 text-lg"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PIE/DOUGHNUT CHART CARD -->
+                <div class="xl:col-span-4 bg-white p-3.5 rounded-xl shadow-sm border border-slate-200 flex flex-col justify-between min-h-[140px]">
+                    <div class="flex items-center justify-between border-b border-slate-100 pb-1.5 mb-1">
+                        <span class="text-xs font-bold uppercase tracking-wider text-slate-600 flex items-center gap-1.5">
+                            <i class="fa-solid fa-chart-pie text-slate-400"></i> สัดส่วนสถานะเอกสาร
+                        </span>
+                    </div>
+                    <div class="relative w-full h-[100px] flex items-center justify-center">
+                        <canvas id="statusPieChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CONTROLS, SEARCH, AND FILTERS -->
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col gap-4">
+                <div class="flex flex-col sm:flex-row gap-3">
+                    <div class="relative flex-grow">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-3.5 text-slate-400"></i>
+                        <input type="text" id="search-input" onkeyup="toggleClearBtn(); filterData();" placeholder="ค้นหา เลขที่เอกสาร, ผู้รับเหมา, รายละเอียด..." class="w-full pl-9 pr-10 py-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-500 text-sm">
+                        <!-- CLEAR SEARCH INPUT BUTTON -->
+                        <button id="clear-search-btn" onclick="clearSearch()" class="absolute right-3 top-3 text-slate-400 hover:text-slate-600 transition hidden" title="ล้างการค้นหา">
+                            <i class="fa-solid fa-circle-xmark text-lg"></i>
+                        </button>
+                    </div>
+                    <div class="flex gap-2">
+                        <select id="filter-system" onchange="filterData()" class="px-3 py-2.5 rounded-lg border border-slate-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-slate-500">
+                            <option value="all">ทุกประเภทงาน</option>
+                            <option value="ระบบประปาและสุขาภิบาล">ระบบประปา/สุขาภิบาล</option>
+                            <option value="ระบบดับเพลิง">ระบบดับเพลิง</option>
+                            <option value="ระบบปรับอากาศและระบายอากาศ">ระบบปรับอากาศ/ระบายอากาศ</option>
+                            <option value="โครงสร้าง">งานโครงสร้าง</option>
+                            <option value="สถาปัตยกรรม">งานสถาปัตยกรรม</option>
+                            <option value="ระบบไฟฟ้า">ระบบไฟฟ้า</option>
+                            <option value="ระบบสื่อสาร">ระบบสื่อสาร</option>
+                            <option value="ระบบสัญญาณป้องกันเพลิงไหม้">ระบบสัญญาณป้องกันเพลิงไหม้</option>
+                        </select>
+                        <button onclick="openAddModal()" class="bg-slate-900 hover:bg-slate-800 text-white px-4 py-2.5 rounded-lg font-medium text-sm flex items-center gap-2 shadow transition shrink-0">
+                            <i class="fa-solid fa-plus"></i> เพิ่มใบ INP
+                        </button>
+                    </div>
+                </div>
+                <!-- Active filters breadcrumbs/info -->
+                <div class="flex items-center justify-between text-xs text-slate-500">
+                    <div class="flex items-center gap-2">
+                        <span>สถานะปัจจุบัน:</span>
+                        <span id="current-status-filter-badge" class="bg-slate-100 text-slate-700 font-semibold px-2.5 py-1 rounded-full">ทั้งหมด</span>
+                    </div>
+                    <button onclick="resetDemoData()" class="text-slate-400 hover:text-slate-600 transition underline">
+                        รีเซ็ตข้อมูลตัวอย่าง
+                    </button>
+                </div>
+            </div>
+
+            <!-- LIST OF DOCUMENTS TABLE -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-grow flex flex-col min-h-[400px]">
+                <div class="overflow-x-auto flex-grow">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-50 border-b border-slate-200 text-slate-500 text-xs font-semibold uppercase tracking-wider">
+                                <th class="py-3.5 px-4">เลขที่เอกสาร (Ref)</th>
+                                <th class="py-3.5 px-4">ผู้รับเหมา / รายละเอียด</th>
+                                <th class="py-3.5 px-4">ตำแหน่งที่ตรวจ</th>
+                                <th class="py-3.5 px-4">วันที่เอกสาร</th>
+                                <th class="py-3.5 px-4 text-center">สถานะ</th>
+                                <th class="py-3.5 px-4 text-center">ส่งต่อ Admin</th>
+                            </tr>
+                        </thead>
+                        <tbody id="document-table-body" class="divide-y divide-slate-100 text-sm">
+                            <!-- Dynamic Content Inserted Here -->
+                        </tbody>
+                    </table>
+                </div>
+                <div class="bg-slate-50 px-4 py-3 border-t border-slate-200 flex justify-between items-center text-xs text-slate-500">
+                    <div>แสดง <span id="displayed-count" class="font-semibold text-slate-700">0</span> จากทั้งหมด <span id="total-count" class="font-semibold text-slate-700">0</span> รายการ</div>
+                    <div class="flex items-center gap-2">
+                        <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping"></span>
+                        <span id="sync-text-status">ซิงค์ข้อมูลกับชีตจำลองล่าสุดเมื่อสักครู่</span>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- LEFT/RIGHT DIVIDER & DETAIL FORM AREA (5 COLS) -->
+        <section class="lg:col-span-5 flex flex-col gap-4">
+            
+            <div class="bg-white rounded-xl shadow-lg border border-slate-300 p-6 relative flex flex-col gap-6" id="digital-inp-form">
+                
+                <!-- Watermark for active state -->
+                <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none opacity-[0.06] transition-all duration-300" id="form-watermark-stamp">
+                    <i class="fa-solid fa-stamp text-[200px]"></i>
+                </div>
+
+                <!-- Digital Stamp Floating (Approved/Retest/Pending) -->
+                <div class="absolute right-8 top-[140px] pointer-events-none z-10 transition-all duration-300 uppercase font-bold px-6 py-2.5 rounded text-2xl tracking-wider hidden" id="digital-stamp">
+                    APPROVED
+                </div>
+
+                <!-- EMPTY STATE VIEW (Shown when no documents selected/available) -->
+                <div id="form-empty-state" class="hidden flex-col items-center justify-center text-center py-24 text-slate-400">
+                    <i class="fa-solid fa-file-invoice text-6xl mb-4 text-slate-300"></i>
+                    <p class="font-semibold text-slate-600">ไม่พบเอกสารตรวจงาน</p>
+                    <p class="text-xs text-slate-500 mt-1.5 max-w-xs">เลือกคลิกตารางฝั่งซ้ายมือเพื่อดูรายละเอียด หรือกด "เพิ่มใบ INP" เพื่อตั้งเรื่องตรวจสอบ</p>
+                </div>
+
+                <!-- MAIN FORM CONTENT WRAPPER -->
+                <div id="form-content-wrapper" class="flex flex-col gap-6">
+                    <!-- Form Header -->
+                    <div class="border-b-2 border-slate-200 pb-4">
+                        <div class="flex justify-between items-start gap-4">
+                            <div class="flex items-center gap-3">
+                                <span class="text-3xl text-red-600 font-extrabold tracking-tighter">ΔES</span>
+                                <div>
+                                    <h3 class="text-base font-bold tracking-tight text-slate-900">EDEN EKKAMAI PROJECT</h3>
+                                    <p class="text-xs text-slate-500">Construction Management Inspection System</p>
+                                </div>
+                            </div>
+                            <div class="text-right flex flex-col items-end gap-1.5">
+                                <span class="bg-slate-100 text-slate-800 font-mono text-xs px-2.5 py-1 rounded border border-slate-200 font-semibold" id="form-ref">AES-INP-SN-6-79</span>
+                                <div class="flex gap-2">
+                                    <!-- EDIT DOCUMENT BUTTON -->
+                                    <button onclick="openEditModal()" class="text-indigo-600 hover:text-indigo-800 text-xs font-semibold flex items-center gap-1 transition px-2 py-1 hover:bg-indigo-50 rounded" title="แก้ไขรายละเอียดเอกสารใบนี้">
+                                        <i class="fa-solid fa-pen-to-square text-[10px]"></i> แก้ไข
+                                    </button>
+                                    <!-- DELETE DOCUMENT BUTTON -->
+                                    <button onclick="deleteActiveDocument()" class="text-rose-600 hover:text-rose-800 text-xs font-semibold flex items-center gap-1 transition px-2 py-1 hover:bg-rose-50 rounded" title="ลบเอกสารใบนี้">
+                                        <i class="fa-solid fa-trash-can text-[10px]"></i> ลบออก
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-4 text-center py-2 bg-slate-900 text-white rounded text-xs font-bold uppercase tracking-wider">
+                            Request for Inspection (INP) / หนังสือตรวจสอบงาน
+                        </div>
+                    </div>
+
+                    <!-- Form Details Grid -->
+                    <div class="grid grid-cols-2 gap-y-3 gap-x-4 text-xs border-b border-slate-100 pb-4">
+                        <div>
+                            <span class="text-slate-400 block mb-0.5">โดยผู้รับเหมา / Subcontractor</span>
+                            <span class="font-semibold text-slate-800 text-sm" id="form-contractor">-</span>
+                        </div>
+                        <div>
+                            <span class="text-slate-400 block mb-0.5">วันที่และต้องการตรวจ / Request Date & Time</span>
+                            <span class="font-medium text-slate-800" id="form-request-date">-</span>
+                        </div>
+                        <div class="col-span-2">
+                            <span class="text-slate-400 block mb-0.5">ตำแหน่งหน้างาน / Location</span>
+                            <span class="font-semibold text-slate-800" id="form-location">-</span>
+                        </div>
+                        <div class="col-span-2">
+                            <span class="text-slate-400 block mb-0.5">รายละเอียดงาน / Job Description</span>
+                            <span class="font-medium text-slate-800 text-xs block bg-slate-50 p-2.5 rounded border border-slate-100 leading-relaxed" id="form-description">-</span>
+                        </div>
+                    </div>
+
+                    <!-- Systems Checkboxes Display (Mimics physical form grid) -->
+                    <div>
+                        <span class="text-slate-400 text-xs block mb-2">ประเภทงานที่ตรวจสอบ / System Types Checklist</span>
+                        <div class="grid grid-cols-2 gap-2 bg-slate-50 p-3 rounded-lg border border-slate-100" id="form-system-checkboxes-display">
+                            <!-- Populated with checkboxes in javascript dynamically -->
+                        </div>
+                    </div>
+
+                    <!-- Interactive CM Assessment Area -->
+                    <div class="bg-slate-50 p-4 rounded-xl border-2 border-slate-200">
+                        <h4 class="text-xs font-bold uppercase tracking-wider text-slate-600 mb-3 flex items-center gap-2">
+                            <i class="fa-solid fa-circle-user text-slate-400"></i> สำหรับผู้ควบคุมงาน (CM Assessment)
+                        </h4>
+                        
+                        <div class="flex flex-col gap-4">
+                            <div>
+                                <label class="text-xs font-semibold text-slate-500 block mb-1.5">ระบุสถานะการตรวจสอบ:</label>
+                                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                    <button onclick="updateActiveDocumentStatus('รอการตรวจสอบ')" id="btn-status-pending" class="px-2 py-2 text-[11px] font-semibold rounded-lg border-2 text-amber-600 border-amber-300 hover:bg-amber-50 transition flex items-center justify-center gap-1">
+                                        <i class="fa-solid fa-clock-rotate-left"></i> รอการตรวจ
+                                    </button>
+                                    <button onclick="updateActiveDocumentStatus('รอ ผรม เซ็น')" id="btn-status-subsign" class="px-2 py-2 text-[11px] font-semibold rounded-lg border-2 text-blue-600 border-blue-300 hover:bg-blue-50 transition flex items-center justify-center gap-1">
+                                        <i class="fa-solid fa-file-signature"></i> รอ ผรม เซ็น
+                                    </button>
+                                    <button onclick="updateActiveDocumentStatus('ต้องทดสอบซ้ำ')" id="btn-status-retest" class="px-2 py-2 text-[11px] font-semibold rounded-lg border-2 text-rose-600 border-rose-300 hover:bg-rose-50 transition flex items-center justify-center gap-1">
+                                        <i class="fa-solid fa-triangle-exclamation"></i> ทดสอบซ้ำ
+                                    </button>
+                                    <button onclick="updateActiveDocumentStatus('อนุมัติ')" id="btn-status-approved" class="px-2 py-2 text-[11px] font-semibold rounded-lg border-2 text-emerald-600 border-emerald-300 hover:bg-emerald-50 transition flex items-center justify-center gap-1">
+                                        <i class="fa-solid fa-circle-check"></i> อนุมัติผ่าน
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label for="form-input-notes" class="text-xs font-semibold text-slate-500 block mb-1">บันทึกความเห็น / หมายเหตุของ CM:</label>
+                                <textarea id="form-input-notes" onchange="updateActiveDocumentNotes(this.value)" rows="3" placeholder="ระบุเหตุผลในกรณีไม่ผ่าน เช่น แรงดันตกใน 24 ชม., คอนกรีตร้าว, หรืองานเรียบร้อยดีผ่าน..." class="w-full text-xs p-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-500"></textarea>
+                            </div>
+
+                            <div class="flex items-center justify-between pt-2 border-t border-slate-200">
+                                <div class="flex items-center gap-2">
+                                    <input type="checkbox" id="form-input-admin" onchange="toggleAdminSent(this.checked)" class="w-4 h-4 text-emerald-600 border-slate-300 rounded focus:ring-emerald-500">
+                                    <label for="form-input-admin" class="text-xs font-semibold text-slate-700 cursor-pointer">ส่งต่อให้แอดมินดำเนินงานต่อ (Admin Sent)</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Digital Signatures Simulation -->
+                    <div class="grid grid-cols-2 gap-4 pt-4 border-t border-slate-100 text-[11px]">
+                        <div class="text-center p-2 border border-dashed border-slate-200 rounded">
+                            <span class="text-slate-400 block mb-3">ลงชื่อผู้รับเหมา (Subcontractor)</span>
+                            <div class="font-mono text-slate-600 italic">Signed Digitally</div>
+                            <div class="text-[9px] text-slate-400 mt-1" id="form-sub-sign-date">-</div>
+                        </div>
+                        <div class="text-center p-2 border border-dashed border-slate-200 rounded relative overflow-hidden">
+                            <span class="text-slate-400 block mb-3">ลงชื่อผู้ควบคุมงาน (CM Signature)</span>
+                            <div id="cm-signature-area">
+                                <div class="font-mono text-indigo-600 font-bold italic text-sm">Sarun S.</div>
+                                <div class="text-[9px] text-slate-400 mt-1" id="form-cm-sign-date">-</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- NEW DOCUMENT MODAL -->
+    <div id="add-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            <div class="bg-slate-900 px-6 py-4 text-white flex justify-between items-center">
+                <h3 class="font-bold">สร้างเอกสารตรวจงาน (New INP Document)</h3>
+                <button onclick="closeAddModal()" class="text-slate-400 hover:text-white transition">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <form id="add-doc-form" onsubmit="saveNewDocument(event)" class="p-6 flex flex-col gap-4 text-sm">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">Our Reference (เลขที่ใบ INP)*</label>
+                    <input type="text" id="new-ref" required placeholder="เช่น AES-INP-SN-6-80" class="w-full px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-500">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 mb-1">ผู้รับเหมา (Subcontractor)*</label>
+                        <input type="text" id="new-contractor" required placeholder="เช่น บริษัท เอสิส วิศวกรรม จำกัด" class="w-full px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 mb-1">วันที่ต้องการตรวจ (Date)*</label>
+                        <input type="date" id="new-date" required class="w-full px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-500 text-xs">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 mb-1">เวลาต้องการตรวจ (Time - 24Hr)*</label>
+                        <input type="time" id="new-time" required class="w-full px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-500 text-xs">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 mb-1">ตำแหน่งหน้างานที่ตรวจ (Location)*</label>
+                        <input type="text" id="new-location" required placeholder="เช่น ชั้น 1-4 ระดับ +10.000 GL. 2-3/F-G.1" class="w-full px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-500">
+                    </div>
+                </div>
+                <!-- Multiple Selection Systems Box (Checkboxes) -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1.5">ประเภทงานที่ตรวจสอบ (เลือกได้มากกว่า 1 ประเภท)*</label>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 bg-slate-50 p-3 rounded-lg border border-slate-200" id="add-system-checkboxes">
+                        <label class="flex items-center gap-2 text-xs text-slate-700 cursor-pointer hover:text-slate-950">
+                            <input type="checkbox" name="new-system" value="ระบบประปาและสุขาภิบาล" class="w-4 h-4 rounded text-slate-900 border-slate-300 focus:ring-slate-500">
+                            <span>ระบบประปา/สุขาภิบาล</span>
+                        </label>
+                        <label class="flex items-center gap-2 text-xs text-slate-700 cursor-pointer hover:text-slate-950">
+                            <input type="checkbox" name="new-system" value="ระบบดับเพลิง" class="w-4 h-4 rounded text-slate-900 border-slate-300 focus:ring-slate-500">
+                            <span>ระบบดับเพลิง</span>
+                        </label>
+                        <label class="flex items-center gap-2 text-xs text-slate-700 cursor-pointer hover:text-slate-950 col-span-2 sm:col-span-1">
+                            <input type="checkbox" name="new-system" value="ระบบปรับอากาศและระบายอากาศ" class="w-4 h-4 rounded text-slate-900 border-slate-300 focus:ring-slate-500">
+                            <span>ระบบปรับอากาศ/ระบายอากาศ</span>
+                        </label>
+                        <label class="flex items-center gap-2 text-xs text-slate-700 cursor-pointer hover:text-slate-950">
+                            <input type="checkbox" name="new-system" value="โครงสร้าง" class="w-4 h-4 rounded text-slate-900 border-slate-300 focus:ring-slate-500">
+                            <span>งานโครงสร้าง</span>
+                        </label>
+                        <label class="flex items-center gap-2 text-xs text-slate-700 cursor-pointer hover:text-slate-950">
+                            <input type="checkbox" name="new-system" value="สถาปัตยกรรม" class="w-4 h-4 rounded text-slate-900 border-slate-300 focus:ring-slate-500">
+                            <span>งานสถาปัตยกรรม</span>
+                        </label>
+                        <label class="flex items-center gap-2 text-xs text-slate-700 cursor-pointer hover:text-slate-950">
+                            <input type="checkbox" name="new-system" value="ระบบไฟฟ้า" class="w-4 h-4 rounded text-slate-900 border-slate-300 focus:ring-slate-500">
+                            <span>ระบบไฟฟ้า</span>
+                        </label>
+                        <label class="flex items-center gap-2 text-xs text-slate-700 cursor-pointer hover:text-slate-950">
+                            <input type="checkbox" name="new-system" value="ระบบสื่อสาร" class="w-4 h-4 rounded text-slate-900 border-slate-300 focus:ring-slate-500">
+                            <span>ระบบสื่อสาร</span>
+                        </label>
+                        <label class="flex items-center gap-2 text-xs text-slate-700 cursor-pointer hover:text-slate-950 col-span-2 sm:col-span-1">
+                            <input type="checkbox" name="new-system" value="ระบบสัญญาณป้องกันเพลิงไหม้" class="w-4 h-4 rounded text-slate-900 border-slate-300 focus:ring-slate-500">
+                            <span>ระบบสัญญาณป้องกันเพลิงไหม้</span>
+                        </label>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">รายละเอียดงานที่ตรวจสอบ (Job Description)*</label>
+                    <textarea id="new-description" required rows="2" placeholder="เช่น ส่งตรวจงาน ทดสอบแรงดันน้ำ RISER (SH-9)" class="w-full px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-500"></textarea>
+                </div>
+                <div class="flex justify-end gap-3 pt-4 border-t border-slate-100">
+                    <button type="button" onclick="closeAddModal()" class="px-4 py-2 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 transition text-xs font-semibold">
+                        ยกเลิก
+                    </button>
+                    <button type="submit" class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg transition text-xs font-semibold shadow">
+                        บันทึกเอกสาร
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- EDIT DOCUMENT MODAL -->
+    <div id="edit-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            <div class="bg-slate-900 px-6 py-4 text-white flex justify-between items-center">
+                <h3 class="font-bold">แก้ไขเอกสารตรวจงาน (Edit INP Document)</h3>
+                <button onclick="closeEditModal()" class="text-slate-400 hover:text-white transition">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <form id="edit-doc-form" onsubmit="saveEditedDocument(event)" class="p-6 flex flex-col gap-4 text-sm">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">Our Reference (เลขที่ใบ INP)*</label>
+                    <input type="text" id="edit-ref" required placeholder="เช่น AES-INP-SN-6-79" class="w-full px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-500">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 mb-1">ผู้รับเหมา (Subcontractor)*</label>
+                        <input type="text" id="edit-contractor" required placeholder="เช่น บริษัท เอสิส วิศวกรรม จำกัด" class="w-full px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 mb-1">วันที่ต้องการตรวจ (Date)*</label>
+                        <input type="date" id="edit-date" required class="w-full px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-500 text-xs">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 mb-1">เวลาต้องการตรวจ (Time - 24Hr)*</label>
+                        <input type="time" id="edit-time" required class="w-full px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-500 text-xs">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 mb-1">ตำแหน่งหน้างานที่ตรวจ (Location)*</label>
+                        <input type="text" id="edit-location" required placeholder="เช่น ชั้น 1-4 ระดับ +10.000 GL. 2-3/F-G.1" class="w-full px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-500">
+                    </div>
+                </div>
+                <!-- Multiple Selection Systems Box for Edit Mode -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1.5">ประเภทงานที่ตรวจสอบ (เลือกได้มากกว่า 1 ประเภท)*</label>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 bg-slate-50 p-3 rounded-lg border border-slate-200" id="edit-system-checkboxes">
+                        <label class="flex items-center gap-2 text-xs text-slate-700 cursor-pointer hover:text-slate-950">
+                            <input type="checkbox" name="edit-system" value="ระบบประปาและสุขาภิบาล" class="w-4 h-4 rounded text-slate-900 border-slate-300 focus:ring-slate-500">
+                            <span>ระบบประปา/สุขาภิบาล</span>
+                        </label>
+                        <label class="flex items-center gap-2 text-xs text-slate-700 cursor-pointer hover:text-slate-950">
+                            <input type="checkbox" name="edit-system" value="ระบบดับเพลิง" class="w-4 h-4 rounded text-slate-900 border-slate-300 focus:ring-slate-500">
+                            <span>ระบบดับเพลิง</span>
+                        </label>
+                        <label class="flex items-center gap-2 text-xs text-slate-700 cursor-pointer hover:text-slate-950 col-span-2 sm:col-span-1">
+                            <input type="checkbox" name="edit-system" value="ระบบปรับอากาศและระบายอากาศ" class="w-4 h-4 rounded text-slate-900 border-slate-300 focus:ring-slate-500">
+                            <span>ระบบปรับอากาศ/ระบายอากาศ</span>
+                        </label>
+                        <label class="flex items-center gap-2 text-xs text-slate-700 cursor-pointer hover:text-slate-950">
+                            <input type="checkbox" name="edit-system" value="โครงสร้าง" class="w-4 h-4 rounded text-slate-900 border-slate-300 focus:ring-slate-500">
+                            <span>งานโครงสร้าง</span>
+                        </label>
+                        <label class="flex items-center gap-2 text-xs text-slate-700 cursor-pointer hover:text-slate-950">
+                            <input type="checkbox" name="edit-system" value="สถาปัตยกรรม" class="w-4 h-4 rounded text-slate-900 border-slate-300 focus:ring-slate-500">
+                            <span>งานสถาปัตยกรรม</span>
+                        </label>
+                        <label class="flex items-center gap-2 text-xs text-slate-700 cursor-pointer hover:text-slate-950">
+                            <input type="checkbox" name="edit-system" value="ระบบไฟฟ้า" class="w-4 h-4 rounded text-slate-900 border-slate-300 focus:ring-slate-500">
+                            <span>ระบบไฟฟ้า</span>
+                        </label>
+                        <label class="flex items-center gap-2 text-xs text-slate-700 cursor-pointer hover:text-slate-950">
+                            <input type="checkbox" name="edit-system" value="ระบบสื่อสาร" class="w-4 h-4 rounded text-slate-900 border-slate-300 focus:ring-slate-500">
+                            <span>ระบบสื่อสาร</span>
+                        </label>
+                        <label class="flex items-center gap-2 text-xs text-slate-700 cursor-pointer hover:text-slate-950 col-span-2 sm:col-span-1">
+                            <input type="checkbox" name="edit-system" value="ระบบสัญญาณป้องกันเพลิงไหม้" class="w-4 h-4 rounded text-slate-900 border-slate-300 focus:ring-slate-500">
+                            <span>ระบบสัญญาณป้องกันเพลิงไหม้</span>
+                        </label>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">รายละเอียดงานที่ตรวจสอบ (Job Description)*</label>
+                    <textarea id="edit-description" required rows="2" placeholder="เช่น ส่งตรวจงาน ทดสอบแรงดันน้ำ RISER (SH-9)" class="w-full px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-500"></textarea>
+                </div>
+                <div class="flex justify-end gap-3 pt-4 border-t border-slate-100">
+                    <button type="button" onclick="closeEditModal()" class="px-4 py-2 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 transition text-xs font-semibold">
+                        ยกเลิก
+                    </button>
+                    <button type="submit" class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg transition text-xs font-semibold shadow">
+                        บันทึกการแก้ไข
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- CUSTOM DIALOG MODAL (Alert/Confirm replacement in iframe environment) -->
+    <div id="custom-dialog" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[100] flex items-center justify-center hidden p-4">
+        <div class="bg-white rounded-xl shadow-2xl border border-slate-200 w-full max-w-sm overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            <div class="p-6 text-center">
+                <div id="dialog-icon" class="mx-auto flex items-center justify-center h-12 w-12 rounded-full mb-4">
+                    <!-- Dynamic Icon will be loaded here -->
+                </div>
+                <h3 id="dialog-title" class="text-base font-bold text-slate-900 mb-2"></h3>
+                <p id="dialog-message" class="text-xs text-slate-500 mb-6 px-2 leading-relaxed"></p>
+                <div class="flex justify-center gap-3">
+                    <button id="dialog-cancel-btn" onclick="closeCustomDialog()" class="px-4 py-2 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 transition text-xs font-semibold">
+                        ยกเลิก
+                    </button>
+                    <button id="dialog-confirm-btn" class="px-4 py-2 rounded-lg text-white transition text-xs font-semibold shadow">
+                        ยืนยัน
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN JAVASCRIPT LOGIC -->
+    <script>
+        // MOCK DATA based on actual Construction and User's Image requirements
+        const defaultDocuments = [
+            {
+                id: "AES-INP-SN-6-79",
+                project: "EDEN EKKAMAI",
+                contractor: "บริษัท เอสิส วิศวกรรม จำกัด",
+                systemTypes: ["ระบบประปาและสุขาภิบาล"],
+                location: "ชั้น 1-4 ระดับ +10.000 GL. 2-3/F-G.1",
+                description: "ส่งตรวจงาน ทดสอบแรงดันน้ำ RISER (SH-9)",
+                requestDate: "2026-06-03",
+                requestTime: "10:30",
+                status: "รอการตรวจสอบ", // รอการตรวจสอบ, รอ ผรม เซ็น, ต้องทดสอบซ้ำ, อนุมัติ
+                adminSent: false,
+                notes: ""
+            },
+            {
+                id: "AES-INP-AC-6-12",
+                project: "EDEN EKKAMAI",
+                contractor: "บริษัท เอสิส วิศวกรรม จำกัด",
+                systemTypes: ["ระบบปรับอากาศและระบายอากาศ"],
+                location: "โถงทางเดิน ชั้น 2 โซนลิฟต์",
+                description: "ส่งตรวจงานทดสอบการเดินเครื่องปรับอากาศและตรวจความเรียบร้อย Chilled Water FCU Leak and Run Test (AC-2/1)",
+                requestDate: "2026-06-04",
+                requestTime: "11:00",
+                status: "รอการตรวจสอบ",
+                adminSent: false,
+                notes: ""
+            },
+            {
+                id: "BTECH-INP-ST-6-22",
+                project: "EDEN EKKAMAI",
+                contractor: "บริษัท บี-เทค คอนสตรัคชั่น จำกัด",
+                systemTypes: ["โครงสร้าง"],
+                location: "เสารับพื้น ชั้น 2 พิกัด GL. 4-5/A-C",
+                description: "ตรวจงานผูกเหล็กและติดตั้งไม้แบบเสาปูนเตรียมเทคอนกรีต",
+                requestDate: "2026-06-02",
+                requestTime: "09:15",
+                status: "อนุมัติ",
+                adminSent: true,
+                notes: "เหล็กเสริมและระยะเผื่อความหนาปูนถูกต้องตามแบบมาตรฐาน ยินยอมให้เทปูนได้"
+            },
+            {
+                id: "AES-INP-SN-6-77",
+                project: "EDEN EKKAMAI",
+                contractor: "บริษัท เอสิส วิศวกรรม จำกัด",
+                systemTypes: ["ระบบประปาและสุขาภิบาล", "ระบบดับเพลิง"],
+                location: "ห้องน้ำส่วนกลาง ชั้น 3 GL. 5-6/B-C",
+                description: "ตรวจความสมบูรณ์และทดสอบแรงดันน้ำท่อสุขาภิบาลและท่อน้ำดับเพลิงในผนัง",
+                requestDate: "2026-06-02",
+                requestTime: "14:00",
+                status: "รอ ผรม เซ็น",
+                adminSent: false,
+                notes: "ผ่านการทดสอบแรงดันน้ำแล้วอย่างไม่เป็นทางการ ได้รับแจ้งปากเปล่าว่าเรียบร้อยดี รอผู้รับเหมาลงนามรับรองรายงานการทดสอบเพื่อจัดส่งแอดมินต่อไป"
+            },
+            {
+                id: "NEO-INP-EL-6-15",
+                project: "EDEN EKKAMAI",
+                contractor: "บริษัท นีโอ ไฟเบอร์ จำกัด",
+                systemTypes: ["ระบบไฟฟ้า", "ระบบสัญญาณป้องกันเพลิงไหม้"],
+                location: "ห้องเซิร์ฟเวอร์หลัก ชั้น M",
+                description: "ทดสอบการเชื่อมต่อระบบสายดินและตู้คอนโทรลเตือนภัย (Grounding Loop & Fire Alarm System)",
+                requestDate: "2026-06-01",
+                requestTime: "11:20",
+                status: "ต้องทดสอบซ้ำ",
+                adminSent: false,
+                notes: "ค่าความต้านทานดินอยู่ที่ 6.2 Ohms ซึ่งสูงเกินค่าเกณฑ์มาตรฐานที่ยอมรับได้ (< 5.0 Ohms) ต้องปรับปรุงสายกราวด์ใหม่และนัดทดสอบซ้ำ"
+            },
+            {
+                id: "AES-INP-SN-6-75",
+                project: "EDEN EKKAMAI",
+                contractor: "บริษัท เอสิส วิศวกรรม จำกัด",
+                systemTypes: ["ระบบดับเพลิง"],
+                location: "ชั้นใต้ดิน B1 โซนห้องเครื่อง",
+                description: "ทดสอบ Hydrostatic Pressure Test ท่อดับเพลิงใต้เพดาน",
+                requestDate: "2026-05-29",
+                requestTime: "15:45",
+                status: "อนุมัติ",
+                adminSent: true,
+                notes: "ผ่านการทดสอบทนแรงดัน 1.5 เท่าของแรงดันใช้งานจริง เป็นเวลา 2 ชั่วโมง ไม่มีรอยซึม"
+            },
+            {
+                id: "SUMMIT-INP-ME-6-02",
+                project: "EDEN EKKAMAI",
+                contractor: "บริษัท ซัมมิท แอลลิเวเตอร์ จำกัด",
+                systemTypes: ["ระบบสื่อสาร"],
+                location: "ช่องลิฟต์ที่ 1 ชั้น 1-8",
+                description: "งานติดตั้งรางวิ่งลิฟต์ (Guide Rail Alignment Check)",
+                requestDate: "2026-05-30",
+                requestTime: "13:30",
+                status: "รอการตรวจสอบ",
+                adminSent: false,
+                notes: ""
+            }
+        ];
+
+        let documents = [];
+        let activeDocumentId = "";
+        let currentStatusFilter = "all";
+        let editingOriginalRef = ""; // Store original ID during edit mode
+        let statusPieChart = null; // Store Chart.js instance
+
+        // Helper to get system emojis based on array of system types
+        function getSystemEmojis(systemTypes) {
+            if (!systemTypes || !Array.isArray(systemTypes)) return '';
+            const emojiMap = {
+                "ระบบประปาและสุขาภิบาล": "💧",
+                "ระบบดับเพลิง": "🧯",
+                "ระบบปรับอากาศและระบายอากาศ": "❄️",
+                "โครงสร้าง": "🏗️",
+                "สถาปัตยกรรม": "📐",
+                "ระบบไฟฟ้า": "⚡",
+                "ระบบสื่อสาร": "📶",
+                "ระบบสัญญาณป้องกันเพลิงไหม้": "🚨"
+            };
+            return systemTypes.map(sys => emojiMap[sys] || '📁').join(' ');
+        }
+
+        // Live Clock Loop
+        function startLiveClock() {
+            const clockEl = document.getElementById('live-clock');
+            const formatNumber = (num) => String(num).padStart(2, '0');
+            
+            setInterval(() => {
+                const now = new Date();
+                const yearTH = now.getFullYear() + 543; // Thai Buddhist Calendar
+                const monthsTH = [
+                    "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
+                    "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"
+                ];
+                const dateStr = `${now.getDate()} ${monthsTH[now.getMonth()]} ${yearTH}`;
+                const timeStr = `${formatNumber(now.getHours())}:${formatNumber(now.getMinutes())}:${formatNumber(now.getSeconds())}`;
+                
+                clockEl.innerHTML = `${dateStr} | ${timeStr}`;
+            }, 1000);
+        }
+
+        // Initialize App
+        window.addEventListener('DOMContentLoaded', () => {
+            // Start clock
+            startLiveClock();
+
+            // Load from LocalStorage if exists, else load default mock
+            const stored = localStorage.getItem('cm_inp_documents');
+            if (stored) {
+                documents = JSON.parse(stored);
+            } else {
+                documents = [...defaultDocuments];
+                saveToLocalStorage();
+            }
+
+            // Set current active document
+            if (documents.length > 0) {
+                activeDocumentId = documents[0].id;
+            } else {
+                activeDocumentId = "";
+            }
+
+            renderTable();
+            renderActiveDocument();
+            updateStats();
+        });
+
+        // Save State
+        function saveToLocalStorage() {
+            localStorage.setItem('cm_inp_documents', JSON.stringify(documents));
+            updateStats();
+        }
+
+        // Function to update the Doughnut Chart
+        function updateChart(pending, subsign, retest, approved) {
+            const ctx = document.getElementById('statusPieChart').getContext('2d');
+            
+            const data = {
+                labels: ['รอ CM ตรวจ', 'รอ ผรม เซ็น', 'ต้องทดสอบซ้ำ', 'ผ่านอนุมัติ'],
+                datasets: [{
+                    data: [pending, subsign, retest, approved],
+                    backgroundColor: [
+                        '#f59e0b', // Amber-500
+                        '#3b82f6', // Blue-500
+                        '#f43f5e', // Rose-500
+                        '#10b981'  // Emerald-500
+                    ],
+                    borderWidth: 1,
+                    borderColor: '#ffffff'
+                }]
+            };
+
+            if (statusPieChart) {
+                statusPieChart.data.datasets[0].data = [pending, subsign, retest, approved];
+                statusPieChart.update();
+            } else {
+                statusPieChart = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: data,
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: true,
+                                position: 'right',
+                                labels: {
+                                    boxWidth: 10,
+                                    padding: 8,
+                                    font: {
+                                        family: 'Prompt',
+                                        size: 10
+                                    },
+                                    color: '#475569'
+                                }
+                            },
+                            tooltip: {
+                                titleFont: {
+                                    family: 'Prompt',
+                                    size: 11
+                                },
+                                bodyFont: {
+                                    family: 'Prompt',
+                                    size: 11
+                                },
+                                callbacks: {
+                                    label: function(context) {
+                                        const label = context.label || '';
+                                        const value = context.raw || 0;
+                                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                        const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                                        return ` ${label}: ${value} รายการ (${percentage}%)`;
+                                    }
+                                }
+                            }
+                        },
+                        cutout: '55%'
+                    }
+                });
+            }
+        }
+
+        // Format YYYY-MM-DD to Thai Date (e.g. 3 มิถุนายน 2026)
+        function formatThaiDate(dateString) {
+            if (!dateString) return "-";
+            try {
+                const parts = dateString.split('-');
+                if (parts.length !== 3) return dateString;
+                const year = parseInt(parts[0]) + 543;
+                const month = parseInt(parts[1]) - 1;
+                const day = parseInt(parts[2]);
+                
+                const monthsTH = [
+                    "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
+                    "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"
+                ];
+                
+                return `${day} ${monthsTH[month]} ${year}`;
+            } catch (e) {
+                return dateString;
+            }
+        }
+
+        // Format YYYY-MM-DD to Short Thai Date (e.g. 3 มิ.ย. 69)
+        function formatShortThaiDate(dateString) {
+            if (!dateString) return "-";
+            try {
+                const parts = dateString.split('-');
+                if (parts.length !== 3) return dateString;
+                const year = parseInt(parts[0]) + 543;
+                const shortYear = String(year).slice(-2);
+                const month = parseInt(parts[1]) - 1;
+                const day = parseInt(parts[2]);
+                
+                const monthsShortTH = [
+                    "ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.",
+                    "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."
+                ];
+                
+                return `${day} ${monthsShortTH[month]} ${shortYear}`;
+            } catch (e) {
+                return dateString;
+            }
+        }
+
+        // Format HH:MM to Thai Time (e.g. 10:30 น.)
+        function formatThaiTime(timeString) {
+            if (!timeString) return "-";
+            return `${timeString} น.`;
+        }
+
+        // Custom Dialog helpers to replace alert/confirm
+        function showCustomConfirm(title, message, type, onConfirm) {
+            const dialog = document.getElementById('custom-dialog');
+            const iconContainer = document.getElementById('dialog-icon');
+            const titleEl = document.getElementById('dialog-title');
+            const msgEl = document.getElementById('dialog-message');
+            const confirmBtn = document.getElementById('dialog-confirm-btn');
+            const cancelBtn = document.getElementById('dialog-cancel-btn');
+
+            titleEl.textContent = title;
+            msgEl.textContent = message;
+            cancelBtn.classList.remove('hidden');
+
+            if (type === 'danger') {
+                iconContainer.className = "mx-auto flex items-center justify-center h-12 w-12 rounded-full mb-4 bg-rose-100 text-rose-600";
+                iconContainer.innerHTML = '<i class="fa-solid fa-trash-can text-xl"></i>';
+                confirmBtn.className = "px-4 py-2 bg-rose-600 hover:bg-rose-500 rounded-lg text-white transition text-xs font-semibold shadow";
+            } else {
+                iconContainer.className = "mx-auto flex items-center justify-center h-12 w-12 rounded-full mb-4 bg-amber-100 text-amber-600";
+                iconContainer.innerHTML = '<i class="fa-solid fa-circle-question text-xl"></i>';
+                confirmBtn.className = "px-4 py-2 bg-amber-600 hover:bg-amber-500 rounded-lg text-white transition text-xs font-semibold shadow";
+            }
+
+            confirmBtn.onclick = () => {
+                onConfirm();
+                closeCustomDialog();
+            };
+
+            dialog.classList.remove('hidden');
+        }
+
+        // Custom alert popups replacement for alert() inside iframe environment
+        function showCustomAlert(title, message, type) {
+            const dialog = document.getElementById('custom-dialog');
+            const iconContainer = document.getElementById('dialog-icon');
+            const titleEl = document.getElementById('dialog-title');
+            const msgEl = document.getElementById('dialog-message');
+            const confirmBtn = document.getElementById('dialog-confirm-btn');
+            const cancelBtn = document.getElementById('dialog-cancel-btn');
+
+            titleEl.textContent = title;
+            msgEl.textContent = message;
+            cancelBtn.classList.add('hidden'); // Hide cancel button for alerts
+
+            if (type === 'danger') {
+                iconContainer.className = "mx-auto flex items-center justify-center h-12 w-12 rounded-full mb-4 bg-rose-100 text-rose-600";
+                iconContainer.innerHTML = '<i class="fa-solid fa-circle-xmark text-xl"></i>';
+                confirmBtn.className = "px-4 py-2 bg-rose-600 hover:bg-rose-500 rounded-lg text-white transition text-xs font-semibold shadow";
+            } else {
+                iconContainer.className = "mx-auto flex items-center justify-center h-12 w-12 rounded-full mb-4 bg-emerald-100 text-emerald-600";
+                iconContainer.innerHTML = '<i class="fa-solid fa-circle-check text-xl"></i>';
+                confirmBtn.className = "px-4 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-white transition text-xs font-semibold shadow";
+            }
+
+            confirmBtn.onclick = closeCustomDialog;
+            dialog.classList.remove('hidden');
+        }
+
+        function closeCustomDialog() {
+            document.getElementById('custom-dialog').classList.add('hidden');
+        }
+
+        // Reset App Data using custom dialog
+        function resetDemoData() {
+            showCustomConfirm(
+                "รีเซ็ตข้อมูลทั้งหมด",
+                "คุณแน่ใจหรือไม่ว่าต้องการคืนค่าข้อมูลตัวอย่างทั้งหมด? ข้อมูลการแก้ไขและการเพิ่มใบใหม่จะสูญหายทันที",
+                "warning",
+                () => {
+                    documents = [...defaultDocuments];
+                    activeDocumentId = documents[0].id;
+                    saveToLocalStorage();
+                    renderTable();
+                    renderActiveDocument();
+                }
+            );
+        }
+
+        // Calculation of KPI Cards
+        function updateStats() {
+            const total = documents.length;
+            const pending = documents.filter(d => d.status === "รอการตรวจสอบ").length;
+            const subsign = documents.filter(d => d.status === "รอ ผรม เซ็น").length;
+            const retest = documents.filter(d => d.status === "ต้องทดสอบซ้ำ").length;
+            const approved = documents.filter(d => d.status === "อนุมัติ").length;
+
+            document.getElementById('stat-total').textContent = total;
+            document.getElementById('stat-pending').textContent = pending;
+            document.getElementById('stat-subsign').textContent = subsign;
+            document.getElementById('stat-retest').textContent = retest;
+            document.getElementById('stat-approved').textContent = approved;
+
+            // Trigger Chart update
+            updateChart(pending, subsign, retest, approved);
+        }
+
+        // Search clear button handlers
+        function toggleClearBtn() {
+            const searchVal = document.getElementById('search-input').value;
+            const clearBtn = document.getElementById('clear-search-btn');
+            if (searchVal.length > 0) {
+                clearBtn.classList.remove('hidden');
+            } else {
+                clearBtn.classList.add('hidden');
+            }
+        }
+
+        function clearSearch() {
+            document.getElementById('search-input').value = "";
+            toggleClearBtn();
+            filterData();
+        }
+
+        // Filter Setting (When clicking KPI Cards)
+        function setFilterStatus(status) {
+            currentStatusFilter = status;
+            
+            // UI badge update
+            const badge = document.getElementById('current-status-filter-badge');
+            if (status === 'all') {
+                badge.className = "bg-slate-100 text-slate-700 font-semibold px-2.5 py-1 rounded-full";
+                badge.textContent = "ทั้งหมด";
+            } else if (status === 'รอการตรวจสอบ') {
+                badge.className = "bg-amber-100 text-amber-800 font-semibold px-2.5 py-1 rounded-full";
+                badge.textContent = "รอ CM ตรวจสอบ";
+            } else if (status === 'ต้องทดสอบซ้ำ') {
+                badge.className = "bg-rose-100 text-rose-800 font-semibold px-2.5 py-1 rounded-full";
+                badge.textContent = "ต้องทดสอบซ้ำ";
+            } else if (status === 'อนุมัติ') {
+                badge.className = "bg-emerald-100 text-emerald-800 font-semibold px-2.5 py-1 rounded-full";
+                badge.textContent = "ผ่านอนุมัติ";
+            } else if (status === 'รอ ผรม เซ็น') {
+                badge.className = "bg-blue-100 text-blue-800 font-semibold px-2.5 py-1 rounded-full";
+                badge.textContent = "รอ ผรม เซ็น";
+            }
+
+            filterData();
+        }
+
+        // Search and Select Filtering Logic
+        function filterData() {
+            const searchQuery = document.getElementById('search-input').value.toLowerCase();
+            const systemFilter = document.getElementById('filter-system').value;
+
+            const filtered = documents.filter(doc => {
+                // Status Filter Check
+                const statusMatch = currentStatusFilter === "all" || doc.status === currentStatusFilter;
+                
+                // System Type Filter Check
+                // Since systemTypes is now an array, we check if the selected system is in that array
+                const systemMatch = systemFilter === "all" || (doc.systemTypes && doc.systemTypes.includes(systemFilter));
+                
+                // Search Query Check
+                const searchMatch = doc.id.toLowerCase().includes(searchQuery) || 
+                                    doc.contractor.toLowerCase().includes(searchQuery) ||
+                                    doc.description.toLowerCase().includes(searchQuery) ||
+                                    doc.location.toLowerCase().includes(searchQuery);
+
+                return statusMatch && systemMatch && searchMatch;
+            });
+
+            renderFilteredTable(filtered);
+        }
+
+        // Render Document List in Table
+        function renderTable() {
+            filterData(); // This handles rendering with active filters
+        }
+
+        function renderFilteredTable(data) {
+            const tbody = document.getElementById('document-table-body');
+            tbody.innerHTML = '';
+
+            if (data.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="py-12 text-center text-slate-400 font-medium">
+                            <i class="fa-solid fa-folder-open text-4xl mb-3 block text-slate-300"></i>
+                            ไม่พบรายการเอกสารในหมวดหมู่นี้
+                        </td>
+                    </tr>
+                `;
+                document.getElementById('displayed-count').textContent = '0';
+                document.getElementById('total-count').textContent = documents.length;
+                return;
+            }
+
+            data.forEach(doc => {
+                const isActive = doc.id === activeDocumentId ? 'bg-slate-100 border-l-4 border-l-slate-800' : 'hover:bg-slate-50';
+                
+                let statusBadge = '';
+                if (doc.status === 'รอการตรวจสอบ') {
+                    statusBadge = `<span class="bg-amber-100 text-amber-800 text-xs font-semibold px-2.5 py-1 rounded-full"><i class="fa-solid fa-clock-rotate-left mr-1"></i>รอตรวจ</span>`;
+                } else if (doc.status === 'ต้องทดสอบซ้ำ') {
+                    statusBadge = `<span class="bg-rose-100 text-rose-800 text-xs font-semibold px-2.5 py-1 rounded-full"><i class="fa-solid fa-triangle-exclamation mr-1"></i>ทดสอบซ้ำ</span>`;
+                } else if (doc.status === 'อนุมัติ') {
+                    statusBadge = `<span class="bg-emerald-100 text-emerald-800 text-xs font-semibold px-2.5 py-1 rounded-full"><i class="fa-solid fa-circle-check mr-1"></i>อนุมัติ</span>`;
+                } else if (doc.status === 'รอ ผรม เซ็น') {
+                    statusBadge = `<span class="bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-1 rounded-full"><i class="fa-solid fa-file-signature mr-1"></i>รอ ผรม เซ็น</span>`;
+                }
+
+                let adminBadge = doc.adminSent 
+                    ? `<span class="text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded text-[11px] font-semibold"><i class="fa-solid fa-paper-plane mr-1"></i>ส่งแล้ว</span>` 
+                    : `<span class="text-slate-400 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded text-[11px]"><i class="fa-solid fa-hourglass-start mr-1"></i>ยังไม่ส่ง</span>`;
+
+                const emojis = getSystemEmojis(doc.systemTypes);
+
+                const tr = document.createElement('tr');
+                tr.className = `${isActive} cursor-pointer transition`;
+                tr.onclick = () => selectDocument(doc.id);
+                tr.innerHTML = `
+                    <td class="py-4 px-4 font-semibold text-slate-900 whitespace-nowrap">
+                        ${doc.id}
+                        <span class="ml-1 text-sm inline-block" title="${doc.systemTypes.join(', ')}">${emojis}</span>
+                    </td>
+                    <td class="py-4 px-4">
+                        <div class="font-semibold text-slate-800 text-xs">${doc.contractor}</div>
+                        <div class="text-slate-500 text-[11px] truncate max-w-[180px] mt-0.5" title="${doc.description}">${doc.description}</div>
+                    </td>
+                    <td class="py-4 px-4 text-xs font-medium text-slate-600">${doc.location}</td>
+                    <td class="py-4 px-4 text-xs font-medium text-slate-600 whitespace-nowrap">${formatShortThaiDate(doc.requestDate)}</td>
+                    <td class="py-4 px-4 text-center">${statusBadge}</td>
+                    <td class="py-4 px-4 text-center">${adminBadge}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            document.getElementById('displayed-count').textContent = data.length;
+            document.getElementById('total-count').textContent = documents.length;
+        }
+
+        // Select active document and load onto digital form
+        function selectDocument(id) {
+            activeDocumentId = id;
+            renderTable();
+            renderActiveDocument();
+        }
+
+        // Delete active document
+        function deleteActiveDocument() {
+            if (!activeDocumentId) return;
+
+            showCustomConfirm(
+                "ลบเอกสารใบนี้?",
+                `คุณต้องการลบเอกสารใบคำขอเลขที่ "${activeDocumentId}" หรือไม่? ข้อมูลทั้งหมดที่เกี่ยวข้องจะถูกลบทิ้งจากระบบและชีตทันที`,
+                "danger",
+                () => {
+                    const docIndex = documents.findIndex(d => d.id === activeDocumentId);
+                    if (docIndex !== -1) {
+                        documents.splice(docIndex, 1);
+                        
+                        // Select another active document if remaining
+                        if (documents.length > 0) {
+                            activeDocumentId = documents[0].id;
+                        } else {
+                            activeDocumentId = "";
+                        }
+                        
+                        saveToLocalStorage();
+                        renderTable();
+                        renderActiveDocument();
+                        simulateGoogleSheetSyncPulse();
+                    }
+                }
+            );
+        }
+
+        // Render Active Document in the Digital INP Form
+        function renderActiveDocument() {
+            const doc = documents.find(d => d.id === activeDocumentId);
+            const emptyState = document.getElementById('form-empty-state');
+            const contentWrapper = document.getElementById('form-content-wrapper');
+            const digitalStamp = document.getElementById('digital-stamp');
+            const watermark = document.getElementById('form-watermark-stamp');
+
+            if (!doc) {
+                emptyState.classList.remove('hidden');
+                contentWrapper.classList.add('hidden');
+                digitalStamp.classList.add('hidden');
+                watermark.classList.add('hidden');
+                return;
+            }
+
+            emptyState.classList.add('hidden');
+            contentWrapper.classList.remove('hidden');
+            watermark.classList.remove('hidden');
+
+            // Form Fields
+            document.getElementById('form-ref').textContent = doc.id;
+            document.getElementById('form-contractor').textContent = doc.contractor;
+            document.getElementById('form-request-date').textContent = `${formatThaiDate(doc.requestDate)} เวลา ${formatThaiTime(doc.requestTime)}`;
+            document.getElementById('form-location').textContent = doc.location;
+            document.getElementById('form-description').textContent = doc.description;
+
+            // Render Multi-system checkboxes mimic of the physical form with dynamic tick highlights
+            const allSystems = [
+                "ระบบประปาและสุขาภิบาล",
+                "ระบบดับเพลิง",
+                "ระบบปรับอากาศและระบายอากาศ",
+                "โครงสร้าง",
+                "สถาปัตยกรรม",
+                "ระบบไฟฟ้า",
+                "ระบบสื่อสาร",
+                "ระบบสัญญาณป้องกันเพลิงไหม้"
+            ];
+            
+            let checkboxGridHtml = '';
+            allSystems.forEach(sys => {
+                const isChecked = doc.systemTypes && doc.systemTypes.includes(sys);
+                checkboxGridHtml += `
+                    <div class="flex items-center gap-2 text-[11px] ${isChecked ? 'text-slate-900 font-semibold' : 'text-slate-400'}">
+                        <span class="w-4 h-4 flex items-center justify-center rounded border ${isChecked ? 'border-emerald-500 bg-emerald-50 text-emerald-600' : 'border-slate-200 bg-white text-transparent'}">
+                            <i class="fa-solid fa-check text-[10px]"></i>
+                        </span>
+                        <span>${sys}</span>
+                    </div>
+                `;
+            });
+            document.getElementById('form-system-checkboxes-display').innerHTML = checkboxGridHtml;
+
+            // Signatures dates mockup
+            document.getElementById('form-sub-sign-date').textContent = `${formatThaiDate(doc.requestDate)} (${formatThaiTime(doc.requestTime)})`;
+            document.getElementById('form-cm-sign-date').textContent = doc.status !== 'รอการตรวจสอบ' ? `${formatThaiDate(doc.requestDate)} (14:15 น.)` : "-";
+
+            // Status Badge Form Area Update
+            const btnPending = document.getElementById('btn-status-pending');
+            const btnRetest = document.getElementById('btn-status-retest');
+            const btnApproved = document.getElementById('btn-status-approved');
+            const btnSubsign = document.getElementById('btn-status-subsign');
+
+            // Reset buttons classes
+            btnPending.className = "px-2 py-2 text-[11px] font-semibold rounded-lg border-2 text-amber-600 border-amber-300 hover:bg-amber-50 transition flex items-center justify-center gap-1";
+            btnRetest.className = "px-2 py-2 text-[11px] font-semibold rounded-lg border-2 text-rose-600 border-rose-300 hover:bg-rose-50 transition flex items-center justify-center gap-1";
+            btnApproved.className = "px-2 py-2 text-[11px] font-semibold rounded-lg border-2 text-emerald-600 border-emerald-300 hover:bg-emerald-50 transition flex items-center justify-center gap-1";
+            btnSubsign.className = "px-2 py-2 text-[11px] font-semibold rounded-lg border-2 text-blue-600 border-blue-300 hover:bg-blue-50 transition flex items-center justify-center gap-1";
+
+            // Add active styles based on status
+            if (doc.status === 'รอการตรวจสอบ') {
+                btnPending.className = "px-2 py-2 text-[11px] font-bold rounded-lg border-2 bg-amber-500 border-amber-500 text-white flex items-center justify-center gap-1 shadow";
+            } else if (doc.status === 'ต้องทดสอบซ้ำ') {
+                btnRetest.className = "px-2 py-2 text-[11px] font-bold rounded-lg border-2 bg-rose-500 border-rose-500 text-white flex items-center justify-center gap-1 shadow";
+            } else if (doc.status === 'อนุมัติ') {
+                btnApproved.className = "px-2 py-2 text-[11px] font-bold rounded-lg border-2 bg-emerald-500 border-emerald-500 text-white flex items-center justify-center gap-1 shadow";
+            } else if (doc.status === 'รอ ผรม เซ็น') {
+                btnSubsign.className = "px-2 py-2 text-[11px] font-bold rounded-lg border-2 bg-blue-500 border-blue-500 text-white flex items-center justify-center gap-1 shadow";
+            }
+
+            // Textarea for Notes
+            document.getElementById('form-input-notes').value = doc.notes || '';
+
+            // Checkbox for Admin Transmission
+            document.getElementById('form-input-admin').checked = doc.adminSent;
+
+            // Render Digital stamp watermark
+            digitalStamp.className = "absolute right-8 top-[140px] pointer-events-none z-10 transition-all duration-300 uppercase font-bold px-6 py-2.5 rounded text-2xl tracking-wider";
+            
+            if (doc.status === 'รอการตรวจสอบ') {
+                digitalStamp.classList.add('stamp-pending');
+                digitalStamp.textContent = 'PENDING CM';
+                digitalStamp.classList.remove('hidden');
+                watermark.className = "absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none opacity-[0.06] text-amber-500";
+            } else if (doc.status === 'ต้องทดสอบซ้ำ') {
+                digitalStamp.classList.add('stamp-retest');
+                digitalStamp.textContent = 'RETEST CM';
+                digitalStamp.classList.remove('hidden');
+                watermark.className = "absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none opacity-[0.06] text-rose-500";
+            } else if (doc.status === 'อนุมัติ') {
+                digitalStamp.classList.add('stamp-approved');
+                digitalStamp.textContent = 'APPROVED';
+                digitalStamp.classList.remove('hidden');
+                watermark.className = "absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none opacity-[0.06] text-emerald-500";
+            } else if (doc.status === 'รอ ผรม เซ็น') {
+                digitalStamp.classList.add('stamp-subsign');
+                digitalStamp.textContent = 'PENDING SUB-SIGN';
+                digitalStamp.classList.remove('hidden');
+                watermark.className = "absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none opacity-[0.06] text-blue-500";
+            } else {
+                digitalStamp.classList.add('hidden');
+            }
+        }
+
+        // Update active document status instantly from CM interface
+        function updateActiveDocumentStatus(status) {
+            const docIndex = documents.findIndex(d => d.id === activeDocumentId);
+            if (docIndex === -1) return;
+
+            documents[docIndex].status = status;
+            saveToLocalStorage();
+            renderTable();
+            renderActiveDocument();
+            simulateGoogleSheetSyncPulse();
+        }
+
+        // Update active document notes instantly
+        function updateActiveDocumentNotes(notes) {
+            const docIndex = documents.findIndex(d => d.id === activeDocumentId);
+            if (docIndex === -1) return;
+
+            documents[docIndex].notes = notes;
+            saveToLocalStorage();
+            simulateGoogleSheetSyncPulse();
+        }
+
+        // Toggle transmission to Admin
+        function toggleAdminSent(checked) {
+            const docIndex = documents.findIndex(d => d.id === activeDocumentId);
+            if (docIndex === -1) return;
+
+            documents[docIndex].adminSent = checked;
+            saveToLocalStorage();
+            renderTable();
+            simulateGoogleSheetSyncPulse();
+        }
+
+        // Simulating writing live back to Google Sheet
+        function simulateGoogleSheetSyncPulse() {
+            const indicator = document.getElementById('sync-text-status');
+            if (indicator) {
+                indicator.textContent = "บันทึกและซิงก์ข้อมูลไป Google Sheets เรียบร้อยแล้ว...";
+                indicator.className = "text-emerald-600 font-medium transition-all duration-300";
+                
+                setTimeout(() => {
+                    indicator.textContent = "ซิงก์ข้อมูลกับชีตจำลองล่าสุดเมื่อสักครู่";
+                    indicator.className = "text-slate-500 transition-all duration-300";
+                }, 2500);
+            }
+        }
+
+        // Open/Close Modal Forms
+        function openAddModal() {
+            document.getElementById('add-modal').classList.remove('hidden');
+            
+            // Auto generate some document ID sequence based on current length
+            const countAES = documents.filter(d => d.id.includes('AES-INP')).length;
+            document.getElementById('new-ref').value = `AES-INP-SN-6-${80 + countAES}`;
+
+            // Auto-fill today's date and current time
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const hh = String(now.getHours()).padStart(2, '0');
+            const mm = String(now.getMinutes()).padStart(2, '0');
+
+            document.getElementById('new-date').value = `${year}-${month}-${day}`;
+            document.getElementById('new-time').value = `${hh}:${mm}`;
+        }
+
+        function closeAddModal() {
+            document.getElementById('add-modal').classList.add('hidden');
+            document.getElementById('add-doc-form').reset();
+        }
+
+        // Helper to map and check system list check boxes
+        function openEditModal() {
+            const doc = documents.find(d => d.id === activeDocumentId);
+            if (!doc) return;
+
+            editingOriginalRef = doc.id; // Store original ID to match in save step
+            document.getElementById('edit-ref').value = doc.id;
+            document.getElementById('edit-contractor').value = doc.contractor;
+            document.getElementById('edit-location').value = doc.location;
+            document.getElementById('edit-description').value = doc.description;
+
+            // Fill date and time
+            document.getElementById('edit-date').value = doc.requestDate || '';
+            document.getElementById('edit-time').value = doc.requestTime || '';
+
+            // Checkboxes values populate for Edit Form
+            const editCheckboxes = document.querySelectorAll('input[name="edit-system"]');
+            editCheckboxes.forEach(cb => {
+                cb.checked = doc.systemTypes && doc.systemTypes.includes(cb.value);
+            });
+
+            document.getElementById('edit-modal').classList.remove('hidden');
+        }
+
+        function closeEditModal() {
+            document.getElementById('edit-modal').classList.add('hidden');
+            document.getElementById('edit-doc-form').reset();
+            editingOriginalRef = "";
+        }
+
+        function saveEditedDocument(event) {
+            event.preventDefault();
+
+            const newRef = document.getElementById('edit-ref').value.trim();
+            const contractor = document.getElementById('edit-contractor').value.trim();
+            const location = document.getElementById('edit-location').value.trim();
+            const desc = document.getElementById('edit-description').value.trim();
+            const dateVal = document.getElementById('edit-date').value;
+            const timeVal = document.getElementById('edit-time').value;
+
+            // Collect selected checkboxes
+            const selectedSystems = [];
+            const checkboxes = document.querySelectorAll('input[name="edit-system"]:checked');
+            checkboxes.forEach(cb => {
+                selectedSystems.push(cb.value);
+            });
+
+            if (selectedSystems.length === 0) {
+                showCustomAlert("ข้อมูลไม่ครบถ้วน", "กรุณาเลือกประเภทงานที่ตรวจสอบอย่างน้อย 1 รายการ", "danger");
+                return;
+            }
+
+            // Validation: Check if the new reference ID already exists in other documents
+            if (newRef !== editingOriginalRef && documents.some(d => d.id === newRef)) {
+                showCustomAlert("เกิดข้อผิดพลาด", "เลขที่เอกสารใหม่นี้มีอยู่ในระบบแล้ว กรุณาตรวจสอบและใช้รหัสอื่นที่ไม่ซ้ำกัน", "danger");
+                return;
+            }
+
+            const docIndex = documents.findIndex(d => d.id === editingOriginalRef);
+            if (docIndex !== -1) {
+                documents[docIndex].id = newRef; // Update the ID/Ref
+                documents[docIndex].contractor = contractor;
+                documents[docIndex].location = location;
+                documents[docIndex].description = desc;
+                documents[docIndex].requestDate = dateVal;
+                documents[docIndex].requestTime = timeVal;
+                documents[docIndex].systemTypes = selectedSystems;
+
+                activeDocumentId = newRef; // Automatically select the newly renamed document
+
+                saveToLocalStorage();
+                closeEditModal();
+                renderTable();
+                renderActiveDocument();
+                simulateGoogleSheetSyncPulse();
+            }
+        }
+
+        // Save Form Submittal
+        function saveNewDocument(event) {
+            event.preventDefault();
+
+            const ref = document.getElementById('new-ref').value.trim();
+            const contractor = document.getElementById('new-contractor').value.trim();
+            const location = document.getElementById('new-location').value.trim();
+            const desc = document.getElementById('new-description').value.trim();
+            const dateVal = document.getElementById('new-date').value;
+            const timeVal = document.getElementById('new-time').value;
+
+            // Collect selected checkboxes
+            const selectedSystems = [];
+            const checkboxes = document.querySelectorAll('input[name="new-system"]:checked');
+            checkboxes.forEach(cb => {
+                selectedSystems.push(cb.value);
+            });
+
+            if (selectedSystems.length === 0) {
+                showCustomAlert("ข้อมูลไม่ครบถ้วน", "กรุณาเลือกประเภทงานที่ตรวจสอบอย่างน้อย 1 รายการ", "danger");
+                return;
+            }
+
+            if (documents.some(d => d.id === ref)) {
+                showCustomAlert("เกิดข้อผิดพลาด", "เลขที่เอกสารนี้มีอยู่ในระบบแล้ว กรุณาตรวจสอบและตั้งค่าชื่อเอกสารใหม่อีกครั้ง", "danger");
+                return;
+            }
+
+            const newDoc = {
+                id: ref,
+                project: "EDEN EKKAMAI",
+                contractor: contractor,
+                systemTypes: selectedSystems,
+                location: location,
+                description: desc,
+                requestDate: dateVal,
+                requestTime: timeVal,
+                status: "รอการตรวจสอบ",
+                adminSent: false,
+                notes: ""
+            };
+
+            documents.unshift(newDoc); // Add as first item
+            activeDocumentId = ref; // Auto select new item
+
+            saveToLocalStorage();
+            closeAddModal();
+            renderTable();
+            renderActiveDocument();
+            simulateGoogleSheetSyncPulse();
+        }
+    </script>
+</body>
+</html>
